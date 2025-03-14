@@ -4,12 +4,14 @@ import { Users } from 'src/entities/users.entity';
 import { Repository } from 'typeorm';
 import { MessageDto } from './dto/message.dto';
 import { Logger } from '@nestjs/common';
+import { Rooms } from 'src/entities/rooms.entity';
 
 export class ChatService {
   private logger = new Logger('Chat Service - Logger');
   constructor(
     @InjectRepository(Message) private messageRepo: Repository<Message>,
     @InjectRepository(Users) private userRepo: Repository<Users>,
+    @InjectRepository(Rooms) private roomRepo: Repository<Rooms>,
   ) {}
 
   async saveUser(username: string): Promise<Users> {
@@ -57,10 +59,22 @@ export class ChatService {
     await this.userRepo.update({ username }, { isOnline: false });
   }
 
-  async getRecentMessage(limit: number = 20): Promise<Message[]> {
-    return await this.messageRepo.find({
-      take: limit,
-    });
+  async getRecentMessage(id: number): Promise<Message[]> {
+    const query = `SELECT r.id AS room_id , m.content, m.timestamp, m.is_read, u.username AS sender_username, u.id AS sender_id, u2.username AS receiver_username, u2.id AS receiver_id 
+    FROM rooms AS r
+    LEFT JOIN 
+    messages AS m 
+    ON r.id = m.room_id
+    LEFT JOIN
+    users AS u
+    ON m.sender_id = u.id
+    LEFT JOIN
+    users AS u2
+    ON m.receiver_id = u2.id
+    WHERE 
+    m.sender_id = ${id} OR m.receiver_id=${id}`;
+    const message = await this.roomRepo.query(query);
+    return message;
   }
 
   async getAllUser(): Promise<Users[]> {
