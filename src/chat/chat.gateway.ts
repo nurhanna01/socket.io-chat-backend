@@ -66,13 +66,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(SocketEvents.JOIN_APP)
   async handleJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() username: string,
+    @MessageBody() data: { username: string },
   ) {
     try {
-      const user = await this.chatService.saveUser(username);
-      this.activeUser.set(client.id, username);
+      const user = await this.chatService.saveUser(data.username);
+      this.activeUser.set(client.id, data.username);
 
-      const message = await this.chatService.getRecentMessage();
+      const message = await this.chatService.getRecentMessage(user.id);
       const users = await this.chatService.getAllUser();
 
       client.emit(SocketEvents.JOIN_CONFIRMED, { user, message, users });
