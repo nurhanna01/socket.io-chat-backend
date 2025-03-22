@@ -77,8 +77,9 @@ export class ChatService {
     return message;
   }
 
-  async getAllUser(): Promise<Users[]> {
+  async getAllOnlineUser(): Promise<Users[]> {
     return this.userRepo.find({
+      where: { isOnline: true },
       order: { isOnline: 'DESC', username: 'ASC' },
     });
   }

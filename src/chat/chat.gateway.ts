@@ -24,7 +24,7 @@ enum SocketEvents {
   RECEIVE_MESSAGE = 'RECEIVE_MESSAGE',
 }
 
-@WebSocketGateway(3001, {
+@WebSocketGateway(4000, {
   cors: {
     origin: '*',
   },
@@ -54,7 +54,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         await this.chatService.setUserOffline(username);
         this.activeUser.delete(client.id);
 
-        const users = await this.chatService.getAllUser();
+        const users = await this.chatService.getAllOnlineUser();
         this.server.emit(SocketEvents.USERS_UPDATED, users);
         this.logger.warn(`client ${username} disconnect!`);
       }
@@ -73,7 +73,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.activeUser.set(client.id, data.username);
 
       const message = await this.chatService.getRecentMessage(user.id);
-      const users = await this.chatService.getAllUser();
+      const users = await this.chatService.getAllOnlineUser();
 
       client.emit(SocketEvents.JOIN_CONFIRMED, { user, message, users });
       this.server.emit(SocketEvents.USERS_UPDATED, users);
