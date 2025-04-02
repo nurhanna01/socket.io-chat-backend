@@ -2,7 +2,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from 'src/entities/message.entity';
 import { Users } from 'src/entities/users.entity';
 import { Repository } from 'typeorm';
-import { MessageDto } from './dto/message.dto';
+import { MessageDto, MessageDtoLengkap } from './dto/message.dto';
 import { Logger } from '@nestjs/common';
 import { Rooms } from 'src/entities/rooms.entity';
 
@@ -59,22 +59,45 @@ export class ChatService {
     await this.userRepo.update({ username }, { isOnline: false });
   }
 
-  async getRecentMessage(id: number): Promise<Message[]> {
-    const query = `SELECT r.id AS room_id , m.content, m.timestamp, m.is_read, u.username AS sender_username, u.id AS sender_id, u2.username AS receiver_username, u2.id AS receiver_id 
-    FROM rooms AS r
-    LEFT JOIN 
-    messages AS m 
-    ON r.id = m.room_id
-    LEFT JOIN
-    users AS u
-    ON m.sender_id = u.id
-    LEFT JOIN
-    users AS u2
-    ON m.receiver_id = u2.id
-    WHERE 
-    m.sender_id = ${id} OR m.receiver_id=${id}`;
-    const message = await this.roomRepo.query(query);
-    return message;
+  async getRecentMessage(id: number): Promise<MessageDtoLengkap[]> {
+    try {
+      const queryRoom = `
+      SELECT id, receiver_id, sender_id FROM rooms
+      `;
+      const roomChat = await this.roomRepo.query(queryRoom);
+      const messages = {
+        id: undefined,
+        friend_id: undefined,
+        list_message: undefined,
+      };
+
+      for (const data of roomChat) {
+        messages.id = data.id;
+        messages.friend_id =
+          data.sender_id === id
+            ? Number(data.receiver_id)
+            : Number(data.sender_id);
+        const queryMessage = `
+        SELECT m.content, m.timestamp, m.is_read, u.username AS sender_username, u.id AS sender_id, u2.username AS receiver_username, u2.id AS receiver_id 
+        FROM messages AS m 
+        LEFT JOIN
+        users AS u
+        ON m.sender_id = u.id
+        LEFT JOIN
+        users AS u2
+        ON m.receiver_id = u2.id
+        WHERE 
+        m.sender_id = ${id} OR m.receiver_id=${id} AND m.room_id=${data.id}
+        LIMIT 100
+        `;
+        const dataMessage = await this.messageRepo.query(queryMessage);
+        messages.list_message = dataMessage;
+      }
+
+      return [messages];
+    } catch (error) {
+      this.logger.error(`error get message : ${error}`);
+    }
   }
 
   async getAllOnlineUser(): Promise<Users[]> {
