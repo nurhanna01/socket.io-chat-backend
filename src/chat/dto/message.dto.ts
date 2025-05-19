@@ -7,5 +7,6 @@ export class MessageDto {
 
 export class MessageDtoLengkap {
   id: number;
+  room_id: number;
   list_message: [];
 }

@@ -6,8 +6,8 @@ export class Rooms {
   id: number;
 
   @Column()
-  sender_id: string;
+  sender_id: number;
 
   @Column()
-  receiver_id: string;
+  receiver_id: number;
 }

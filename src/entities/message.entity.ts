@@ -22,7 +22,7 @@ export class Message {
   @Column()
   receiver_id: number;
 
-  @Column()
+  @Column({ default: 0 })
   is_read: number;
 
   @CreateDateColumn()
