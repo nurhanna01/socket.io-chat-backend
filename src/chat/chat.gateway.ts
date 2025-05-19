@@ -14,6 +14,8 @@ console.log('chat gateway');
 interface MessagePayload {
   content: string;
   receiver: string;
+  sender: string;
+  room?: number;
 }
 
 enum SocketEvents {
@@ -22,6 +24,8 @@ enum SocketEvents {
   USERS_UPDATED = 'USERS_UPDATED',
   SEND_MESSAGE = 'SEND_MESSAGE',
   RECEIVE_MESSAGE = 'RECEIVE_MESSAGE',
+  DETAIL_CHAT = 'DETAIL_CHAT',
+  SUCCESS_SAVE_MESSAGE = 'SUCCESS_SAVE_MESSAGE',
 }
 
 @WebSocketGateway(4000, {
@@ -89,30 +93,44 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     payload: MessagePayload,
   ): Promise<any> {
     try {
-      const username = this.activeUser.get(client.id);
-      if (!username) {
-        this.logger.error(`username not found`);
-        return;
-      }
-
       const receiver_client = this.findClientByUsername(payload.receiver);
       if (!receiver_client) {
-        this.logger.error(`receiver not found`);
+        this.logger.error(`status ${payload.receiver} user is offline`);
         return;
       }
 
       const message = await this.chatService.saveMessage({
         content: payload.content,
-        sender: username,
+        sender: payload.sender,
         receiver: payload.receiver,
-        room: 0,
+        room: payload.room,
       });
 
       this.server
         .to(receiver_client)
         .emit(SocketEvents.RECEIVE_MESSAGE, message);
+      this.server.to(client.id).emit(SocketEvents.SUCCESS_SAVE_MESSAGE);
     } catch (error) {
       this.logger.error('error send message :', error);
+    }
+  }
+
+  @SubscribeMessage(SocketEvents.DETAIL_CHAT)
+  async handleDetailChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { my_id: string; friend_id: string },
+  ) {
+    try {
+      const chat = await this.chatService.findChat(data.my_id, data.friend_id);
+
+      client.emit(SocketEvents.DETAIL_CHAT, {
+        id: data.my_id,
+        room_id: chat[0]?.room_id,
+        friend_id: data.friend_id,
+        list_message: chat,
+      });
+    } catch (error) {
+      this.logger.error('error detail chat :', error);
     }
   }
 
