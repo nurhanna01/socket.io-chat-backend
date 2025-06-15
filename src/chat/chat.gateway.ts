@@ -26,6 +26,7 @@ enum SocketEvents {
   RECEIVE_MESSAGE = 'RECEIVE_MESSAGE',
   DETAIL_CHAT = 'DETAIL_CHAT',
   SUCCESS_SAVE_MESSAGE = 'SUCCESS_SAVE_MESSAGE',
+  UPDATE_LIST_MESSAGE = 'UPDATE_LIST_MESSAGE',
 }
 
 @WebSocketGateway(4000, {
@@ -129,6 +130,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         friend_id: data.friend_id,
         list_message: chat,
       });
+    } catch (error) {
+      this.logger.error('error detail chat :', error);
+    }
+  }
+
+  @SubscribeMessage(SocketEvents.RECEIVE_MESSAGE)
+  async handleReceiveMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { user_id: number },
+  ) {
+    try {
+      const message = await this.chatService.getRecentMessage(data.user_id);
+
+      client.emit(SocketEvents.UPDATE_LIST_MESSAGE, { message });
     } catch (error) {
       this.logger.error('error detail chat :', error);
     }
