@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn,  } from 'typeorm';
 
 @Entity('users')
 export class Users {
@@ -9,6 +9,9 @@ export class Users {
     unique: true,
   })
   username: string;
+
+  @Column()
+  password : string;
 
   @Column({ default: false })
   isOnline: boolean;

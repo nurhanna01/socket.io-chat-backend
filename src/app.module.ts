@@ -5,8 +5,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/database.config';
 import { ChatModule } from './chat/chat.module';
 import { RedisService } from './redis/redis.service';
+import { AuthModule } from './auth/auth.module';
 @Module({
-  imports: [TypeOrmModule.forRoot(typeOrmConfig), ChatModule],
+  imports: [TypeOrmModule.forRoot(typeOrmConfig), ChatModule, AuthModule],
   controllers: [AppController],
   providers: [AppService, RedisService],
 })
