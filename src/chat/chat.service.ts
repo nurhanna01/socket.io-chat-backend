@@ -14,24 +14,6 @@ export class ChatService {
     @InjectRepository(Rooms) private roomRepo: Repository<Rooms>,
   ) {}
 
-  async saveUser(username: string): Promise<Users> {
-    try {
-      this.logger.log(`find user ${username}`);
-      let user = await this.userRepo.findOne({ where: { username } });
-
-      if (!user) {
-        user = this.userRepo.create({ username, isOnline: true });
-        this.logger.log('create new user: ', user);
-      } else {
-        this.logger.log('update user: ', user);
-        user.isOnline = true;
-      }
-      return await this.userRepo.save(user);
-    } catch (error) {
-      this.logger.error('error when save user ', error);
-    }
-  }
-
   async saveMessage(data: MessageDto): Promise<Message> {
     try {
       const [sender, receiver] = await Promise.all([

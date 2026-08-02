@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { Logger } from '@nestjs/common';
 import { RedisService } from 'src/redis/redis.service';
+import { JwtService } from '@nestjs/jwt';
 console.log('chat gateway');
 interface MessagePayload {
   content: string;
@@ -30,7 +31,7 @@ enum SocketEvents {
   UPDATE_LIST_MESSAGE = 'UPDATE_LIST_MESSAGE',
 }
 
-@WebSocketGateway(4000, { cors: { origin: '*' } })
+@WebSocketGateway( { cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger = new Logger('ChatGateway - Logger');
   private key_online_user = 'online:user';
@@ -40,31 +41,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private chatService: ChatService,
     private readonly redisClient: RedisService,
+    private jwtService : JwtService
   ) {
     this.logger.log('hello chat gateway');
   }
 
   async handleConnection(client: Socket) {
     try {
-      const username = client.handshake.query.username;
-      const isnullUsername = client.handshake.query.isnull;
-      isnullUsername
-        ? this.logger.log(`client connected: ${client.id} without username`)
-        : this.logger.log(`client connected: ${client.id} with username`);
-      if (!isnullUsername && username && typeof username === 'string') {
-        this.logger.log(`${username} connected`);
-        const user = await this.chatService.saveUser(username);
-        await this.redisClient.hset(
-          this.key_online_user,
-          user.id,
-          user.username,
-        );
-        await this.redisClient.hset(
-          this.key_online_socket,
-          `${client.id}`,
-          user.id,
-        );
+      const token = client.handshake.query.token as string;
+      console.log("tokenn",token)
+
+      if(!token){
+        this.logger.log(`client ${client.id} connected without token, disconnecting...`);
+        client.disconnect();
+        return;
       }
+
+      const payload = this.jwtService.verify(token.split(' ')[1], {
+        secret: process.env.JWT_SECRET,
+      });
+
+      client.data.user = payload;
+      this.logger.log(`${payload.username} connected`);
     } catch (error) {
       this.logger.error('socket error ', error);
     }
@@ -99,12 +97,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       this.logger.log('Processing event join chat app');
-      const user = await this.chatService.saveUser(data.username);
+      const user = client.data.user
+
       this.logger.log(`${data.username} joined`);
       await this.redisClient.hset(this.key_online_user, user.id, user.username);
       await this.redisClient.hset(
         this.key_online_socket,
-        `${client.id}`,
+        client.id,
         user.id,
       );
 

@@ -6,9 +6,10 @@ import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { Rooms } from 'src/entities/rooms.entity';
 import { RedisService } from 'src/redis/redis.service';
+import { JwtService } from '@nestjs/jwt';
 console.log('chat module');
 @Module({
   imports: [TypeOrmModule.forFeature([Message, Users, Rooms])],
-  providers: [ChatGateway, ChatService, RedisService],
+  providers: [ChatGateway, ChatService, RedisService, JwtService],
 })
 export class ChatModule {}
