@@ -68,7 +68,7 @@ export class AuthService {
       this.logger.error(
         `user ${payload.username} failed logged in, error : ${error}`,
       );
-      throw new InternalServerErrorException();
+      throw error
     }
   }
 }
