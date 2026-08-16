@@ -31,7 +31,7 @@ enum SocketEvents {
   UPDATE_LIST_MESSAGE = 'UPDATE_LIST_MESSAGE',
 }
 
-@WebSocketGateway( { cors: { origin: '*' } })
+@WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger = new Logger('ChatGateway - Logger');
   private key_online_user = 'online:user';
@@ -41,18 +41,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private chatService: ChatService,
     private readonly redisClient: RedisService,
-    private jwtService : JwtService
+    private jwtService: JwtService,
   ) {
     this.logger.log('hello chat gateway');
   }
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.query.token as string;
-      console.log("tokenn",token)
+      const token = client.handshake.auth.token as string;
 
-      if(!token){
-        this.logger.log(`client ${client.id} connected without token, disconnecting...`);
+      if (!token) {
+        this.logger.log(
+          `client ${client.id} connected without token, disconnecting...`,
+        );
         client.disconnect();
         return;
       }
@@ -97,15 +98,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       this.logger.log('Processing event join chat app');
-      const user = client.data.user
+      const user = client.data.user;
 
       this.logger.log(`${data.username} joined`);
       await this.redisClient.hset(this.key_online_user, user.id, user.username);
-      await this.redisClient.hset(
-        this.key_online_socket,
-        client.id,
-        user.id,
-      );
+      await this.redisClient.hset(this.key_online_socket, client.id, user.id);
 
       const message = await this.chatService.getRecentMessage(user.id);
       const users_redis = await this.redisClient.hgetAll(this.key_online_user);

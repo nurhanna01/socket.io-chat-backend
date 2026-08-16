@@ -12,7 +12,6 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import { LoginDto } from './dto/login.dto';
-import { error } from 'console';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -20,8 +19,8 @@ export class AuthService {
   private logger = new Logger('Auth Service - Logger');
   constructor(
     @InjectRepository(Users) private userRepo: Repository<Users>,
-    private jwtService : JwtService
-) {}
+    private jwtService: JwtService,
+  ) {}
 
   async register(payload: RegisterDto) {
     try {
@@ -57,10 +56,10 @@ export class AuthService {
       const compare = await bcrypt.compare(payload.password, getUser.password);
       if (compare) {
         const token = this.jwtService.sign({
-            id:getUser.id,
-            username: getUser.username
-        })
-        return `Bearer ${token}`;
+          id: getUser.id,
+          username: getUser.username,
+        });
+        return token;
       } else {
         throw new BadRequestException('invalid password');
       }
@@ -68,7 +67,7 @@ export class AuthService {
       this.logger.error(
         `user ${payload.username} failed logged in, error : ${error}`,
       );
-      throw error
+      throw error;
     }
   }
 }
