@@ -94,13 +94,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(SocketEvents.JOIN_APP)
   async handleJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { username: string },
   ) {
     try {
       this.logger.log('Processing event join chat app');
       const user = client.data.user;
 
-      this.logger.log(`${data.username} joined`);
+      this.logger.log(`${user.username} joined`);
       await this.redisClient.hset(this.key_online_user, user.id, user.username);
       await this.redisClient.hset(this.key_online_socket, client.id, user.id);
 
@@ -165,13 +164,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       this.logger.log('Processing event detail message');
-      const chat = await this.chatService.findChat(data.my_id, data.friend_id);
+      // const chat = await this.chatService.findChat(data.my_id, data.friend_id);
 
       client.emit(SocketEvents.DETAIL_CHAT, {
         id: data.my_id,
-        room_id: chat[0]?.room_id,
+        // room_id: chat[0]?.room_id,
         friend_id: data.friend_id,
-        list_message: chat,
+        // list_message: chat,
       });
     } catch (error) {
       this.logger.error('error detail chat :', error);
@@ -185,9 +184,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       this.logger.log('Processing event receive message');
-      const message = await this.chatService.getRecentMessage(data.user_id);
+      // const message = await this.chatService.getRecentMessage(data.user_id);
 
-      client.emit(SocketEvents.UPDATE_LIST_MESSAGE, { message });
+      // client.emit(SocketEvents.UPDATE_LIST_MESSAGE, { message });
     } catch (error) {
       this.logger.error('error detail chat :', error);
     }

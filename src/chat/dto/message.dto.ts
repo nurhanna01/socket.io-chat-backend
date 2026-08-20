@@ -1,12 +1,15 @@
-export class MessageDto {
-  content: string;
-  sender: string;
-  receiver: string;
-  room: number;
+import { IsNotEmpty } from 'class-validator';
+export class getMessageByIdDto {
+  @IsNotEmpty()
+  userId: number;
 }
 
-export class MessageDtoLengkap {
-  id: number;
-  room_id: number;
-  list_message: [];
+export class MessageDto {
+  @IsNotEmpty()
+  sender: string;
+
+  @IsNotEmpty()
+  receiver: string;
+  room: number;
+  content: string;
 }

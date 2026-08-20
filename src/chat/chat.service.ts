@@ -2,9 +2,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from 'src/entities/message.entity';
 import { Users } from 'src/entities/users.entity';
 import { Repository } from 'typeorm';
-import { MessageDto, MessageDtoLengkap } from './dto/message.dto';
+import { MessageDto } from './dto/message.dto';
 import { Logger } from '@nestjs/common';
 import { Rooms } from 'src/entities/rooms.entity';
+import { MessageResponse } from './dto/interface';
 
 export class ChatService {
   private logger = new Logger('Chat Service - Logger');
@@ -24,21 +25,26 @@ export class ChatService {
           where: { username: data.receiver },
         }),
       ]);
-      const room_id = data.room;
+      const existingRoom = await this.roomRepo.findOne({
+        where: [
+          { sender_id: sender.id, receiver_id: receiver.id },
+          { sender_id: receiver.id, receiver_id: sender.id },
+        ],
+      });
 
       let saveRoom;
-      if (!room_id) {
+      if (!existingRoom) {
         saveRoom = this.roomRepo.create({
           sender_id: sender.id,
           receiver_id: receiver.id,
         });
         await this.roomRepo.save(saveRoom);
+      } else {
+        saveRoom = existingRoom;
       }
 
       const saveData = this.messageRepo.create({
         content: data.content,
-        sender_id: sender.id,
-        receiver_id: receiver.id,
         room_id: data.room || saveRoom.id,
         is_read: 0,
       });
@@ -52,12 +58,13 @@ export class ChatService {
     await this.userRepo.update({ username }, { isOnline: false });
   }
 
-  async getRecentMessage(id: number): Promise<MessageDtoLengkap[] | []> {
+  async getRecentMessage(id: number): Promise<MessageResponse[] | []> {
     try {
       const queryRoom = `
-      SELECT id, receiver_id, sender_id FROM rooms WHERE receiver_id = ${id} OR sender_id = ${id}
-      `;
-      const roomChat = await this.roomRepo.query(queryRoom);
+      SELECT id, receiver_id, sender_id FROM rooms 
+      WHERE receiver_id = ? OR sender_id = ?
+    `;
+      const roomChat = await this.roomRepo.query(queryRoom, [id, id]);
       const messageArray = [];
 
       for (const data of roomChat) {
@@ -67,20 +74,22 @@ export class ChatService {
           list_message: undefined,
         };
         messages.id = data.id;
+
         const queryMessage = `
-        SELECT m.content, m.timestamp, m.is_read, u.username AS sender_username, u.id AS sender_id, u2.username AS receiver_username, u2.id AS receiver_id 
+        SELECT m.content, m.timestamp, m.is_read, 
+               u.username AS sender_username, u.id AS sender_id, 
+               u2.username AS receiver_username, u2.id AS receiver_id 
         FROM messages AS m 
-        LEFT JOIN
-        users AS u
-        ON m.sender_id = u.id
-        LEFT JOIN
-        users AS u2
-        ON m.receiver_id = u2.id
-        WHERE 
-        m.sender_id = ${id} AND m.room_id=${data.id} OR m.receiver_id=${id} AND m.room_id=${data.id}
-        LIMIT 100
-        `;
-        const dataMessage = await this.messageRepo.query(queryMessage);
+        LEFT JOIN users AS u ON m.sender_id = u.id
+        LEFT JOIN users AS u2 ON m.receiver_id = u2.id
+        WHERE m.room_id = ?
+        ORDER BY m.timestamp ASC
+        LIMIT 1
+      `;
+        const dataMessage = await this.messageRepo.query(queryMessage, [
+          data.id,
+        ]);
+
         messages.list_message = dataMessage;
         if (!messages.friend_id) {
           messages.friend_id =
@@ -94,30 +103,43 @@ export class ChatService {
       return messageArray;
     } catch (error) {
       this.logger.error(`error get message : ${error}`);
+      throw error;
     }
   }
 
-  async findChat(
-    my_id: string,
-    friend_id: string,
-  ): Promise<MessageDtoLengkap[] | []> {
+  async getMessageByUser(
+    myId: number,
+    friendId: number,
+  ): Promise<MessageResponse[] | []> {
     try {
+      const queryRoom = `
+      SELECT id FROM rooms 
+      WHERE (sender_id = ? AND receiver_id = ?) 
+      OR (sender_id = ? AND receiver_id = ?)
+    `;
+      const room = await this.roomRepo.query(queryRoom, [
+        myId,
+        friendId,
+        friendId,
+        myId,
+      ]);
+
+      if (!room.length) return [];
+
       const queryMessage = `
-      SELECT m.content, m.timestamp, m.is_read, m.room_id, u.username AS sender_username, u.id AS sender_id, u2.username AS receiver_username, u2.id AS receiver_id 
+      SELECT m.content, m.timestamp, m.is_read,
+             u.username AS sender_username, u.id AS sender_id, 
+             u2.username AS receiver_username, u2.id AS receiver_id 
       FROM messages AS m 
-      LEFT JOIN
-      users AS u
-      ON m.sender_id = u.id
-      LEFT JOIN
-      users AS u2
-      ON m.receiver_id = u2.id
-      WHERE 
-      (m.sender_id = ${my_id} AND m.receiver_id=${friend_id}) OR (m.receiver_id=${my_id} AND m.sender_id=${friend_id})
-      `;
-      const dataMessage = await this.messageRepo.query(queryMessage);
-      return dataMessage;
+      LEFT JOIN users AS u ON m.sender_id = u.id
+      LEFT JOIN users AS u2 ON m.receiver_id = u2.id
+      WHERE m.room_id = ?
+      ORDER BY m.timestamp ASC
+    `;
+      return await this.messageRepo.query(queryMessage, [room[0].id]);
     } catch (error) {
       this.logger.error(`error get detail message : ${error}`);
+      throw error;
     }
   }
 
