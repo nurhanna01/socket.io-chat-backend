@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Request, UseGuards } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { Logger } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/jwt.guard';
@@ -14,34 +14,31 @@ export class ChatController {
     try {
       const id = req.user.id;
       this.logger.debug(`processing message for user with id ${id}`);
-      const messages = await this.chatService.getRecentMessage(id);
+      const messages = await this.chatService.getConversations(id);
       return {
         message: 'success',
         messages,
       };
     } catch (error) {
-      this.logger.error(`allMessage - error get messages : `, error);
+      this.logger.error(`allMessage - error getConversations : `, error);
       throw error;
     }
   }
 
-  @Get(':userId')
+  @Get(':roomId')
   async messageByUser(@Request() req, @Param() dto: getMessageByIdDto) {
     try {
       const id = req.user.id;
       this.logger.debug(
-        `processing message for user with id ${id} and friend id ${dto.userId}`,
+        `processing message for user with id ${id} and friend id ${dto.roomId}`,
       );
-      const messages = await this.chatService.getMessageByUser(
-        id,
-        dto.userId,
-      );
+      const messages = await this.chatService.getMessagesByRoom(dto.roomId);
       return {
         message: 'success',
         messages,
       };
     } catch (error) {
-      this.logger.error(`messageByUser - error get messages : `, error);
+      this.logger.error(`messageByUser - error get messages by room : `, error);
       throw error;
     }
   }

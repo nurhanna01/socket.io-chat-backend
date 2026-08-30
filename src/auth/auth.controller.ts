@@ -1,8 +1,7 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtGuard } from './jwt.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -24,9 +23,9 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     try {
       const token = await this.authService.login(loginDto);
-    return {
+      return {
         message: 'success',
-        token: token
+        token: token,
       };
     } catch (error) {
       throw error;

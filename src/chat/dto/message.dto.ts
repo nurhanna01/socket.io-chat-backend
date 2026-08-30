@@ -1,7 +1,7 @@
 import { IsNotEmpty } from 'class-validator';
 export class getMessageByIdDto {
   @IsNotEmpty()
-  userId: number;
+  roomId: number;
 }
 
 export class MessageDto {
