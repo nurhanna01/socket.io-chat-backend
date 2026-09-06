@@ -24,7 +24,7 @@ export class AuthService {
 
   async register(payload: RegisterDto) {
     try {
-      const saltRounds = Number(process.env.BCRYPT_SALTROUNDS);
+      const saltRounds = Number(process.env.BCRYPT_SALTROUNDS) || 10;
       const pass = await bcrypt.hash(payload.password, saltRounds);
       const data = this.userRepo.create({
         username: payload.username,
