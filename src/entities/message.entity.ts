@@ -19,6 +19,9 @@ export class Message {
   @Column()
   sender_id: number;
 
+  @Column()
+  receiver_id: number;
+
   @Column({ default: 0 })
   is_read: number;
 
