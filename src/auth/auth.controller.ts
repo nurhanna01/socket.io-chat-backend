@@ -22,10 +22,11 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() loginDto: LoginDto) {
     try {
-      const token = await this.authService.login(loginDto);
+      const {token, user} = await this.authService.login(loginDto);
       return {
         message: 'success',
-        token: token,
+        token,
+        user
       };
     } catch (error) {
       throw error;

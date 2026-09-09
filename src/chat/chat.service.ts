@@ -62,13 +62,16 @@ export class ChatService {
         r.id AS room_id,
         r.sender_id AS room_sender_id,
         r.receiver_id AS room_receiver_id,
+        ru.username AS room_sender_username,
+        ru2.username AS room_receiver_username,
         m.content,
         m.timestamp,
         m.is_read,
         m.sender_id AS message_sender_id,
-        u.username AS sender_username,
-        u2.username AS receiver_username
+        u.username AS sender_username
       FROM rooms AS r
+      LEFT JOIN users AS ru ON r.sender_id = ru.id
+      LEFT JOIN users AS ru2 ON r.receiver_id = ru2.id
       LEFT JOIN messages AS m 
         ON m.room_id = r.id 
         AND m.timestamp = (
@@ -77,7 +80,6 @@ export class ChatService {
           WHERE m2.room_id = r.id
         )
       LEFT JOIN users AS u ON m.sender_id = u.id
-      LEFT JOIN users AS u2 ON m.receiver_id = u2.id
       WHERE r.sender_id = ? OR r.receiver_id = ?
     `;
       const rows = await this.roomRepo.query(query, [userId, userId]);
@@ -89,8 +91,8 @@ export class ChatService {
             : row.room_sender_id,
         friend_name:
           row.room_sender_id === userId
-            ? row.receiver_username
-            : row.sender_username,
+            ? row.room_receiver_username 
+            : row.room_sender_username,
         last_message: row.content
           ? {
               content: row.content,

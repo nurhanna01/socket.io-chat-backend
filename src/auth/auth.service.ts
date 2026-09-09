@@ -59,7 +59,7 @@ export class AuthService {
           id: getUser.id,
           username: getUser.username,
         });
-        return token;
+        return { token, user: { id: getUser.id, username: getUser.username } };
       } else {
         throw new BadRequestException('invalid password');
       }
