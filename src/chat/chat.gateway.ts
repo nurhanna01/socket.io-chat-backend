@@ -26,9 +26,7 @@ enum SocketEvents {
   USERS_UPDATED = 'USERS_UPDATED',
   SEND_MESSAGE = 'SEND_MESSAGE',
   RECEIVE_MESSAGE = 'RECEIVE_MESSAGE',
-  DETAIL_CHAT = 'DETAIL_CHAT',
   SUCCESS_SAVE_MESSAGE = 'SUCCESS_SAVE_MESSAGE',
-  UPDATE_LIST_MESSAGE = 'UPDATE_LIST_MESSAGE',
 }
 
 @WebSocketGateway({ cors: { origin: '*' } })
@@ -101,8 +99,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.redisClient.hset(this.key_online_user, user.id, user.username);
       await this.redisClient.hset(this.key_online_socket, client.id, user.id);
 
-      // nanti sesuaikan id ini
-      const message = await this.chatService.getMessagesByRoom(user.id);
       const users_redis = await this.redisClient.hgetAll(this.key_online_user);
       const users = Object.entries(users_redis).map(([id, username]) => ({
         id,
@@ -111,7 +107,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       client.emit(SocketEvents.JOIN_CONFIRMED, {
         user,
-        message,
         users,
       });
       this.server.emit(SocketEvents.USERS_UPDATED, users);
@@ -128,14 +123,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<any> {
     try {
       this.logger.log('Processing event send message');
-      const receiver_client = await this.findSocketClientByUsername(
-        payload.receiver,
-      );
-      if (!receiver_client) {
-        this.logger.error(`status ${payload.receiver} user is offline`);
-        return;
-      }
-
       const message = await this.chatService.saveMessage({
         content: payload.content,
         sender: payload.sender,
@@ -143,48 +130,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         room: payload.room,
       });
 
+      const receiver_client = await this.findSocketClientByUsername(
+        payload.receiver,
+      );
+      if (receiver_client) {
+        this.server
+          .to(receiver_client)
+          .emit(SocketEvents.RECEIVE_MESSAGE, message);
+      } else {
+        this.logger.log(`${payload.receiver} is offline, message saved only`);
+      }
+
+      this.server
+        .to(client.id)
+        .emit(SocketEvents.SUCCESS_SAVE_MESSAGE, message);
+
       this.logger.debug(
         `${payload.sender} send message to ${payload.receiver}`,
       );
-
-      this.server
-        .to(receiver_client)
-        .emit(SocketEvents.RECEIVE_MESSAGE, message);
-      this.server.to(client.id).emit(SocketEvents.SUCCESS_SAVE_MESSAGE);
     } catch (error) {
       this.logger.error('error send message :', error);
-    }
-  }
-
-  @SubscribeMessage(SocketEvents.DETAIL_CHAT)
-  async handleDetailChat(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { my_id: string; friend_id: string },
-  ) {
-    try {
-      this.logger.log('Processing event detail message');
-      // const chat = await this.chatService.findChat(data.my_id, data.friend_id);
-
-      client.emit(SocketEvents.DETAIL_CHAT, {
-        id: data.my_id,
-        // room_id: chat[0]?.room_id,
-        friend_id: data.friend_id,
-        // list_message: chat,
-      });
-    } catch (error) {
-      this.logger.error('error detail chat :', error);
-    }
-  }
-
-  @SubscribeMessage(SocketEvents.RECEIVE_MESSAGE)
-  async handleReceiveMessage() {
-    try {
-      this.logger.log('Processing event receive message');
-      // const message = await this.chatService.getRecentMessage(data.user_id);
-
-      // client.emit(SocketEvents.UPDATE_LIST_MESSAGE, { message });
-    } catch (error) {
-      this.logger.error('error detail chat :', error);
     }
   }
 

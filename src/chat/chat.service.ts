@@ -89,9 +89,9 @@ export class ChatService {
           row.room_sender_id === userId
             ? row.room_receiver_id
             : row.room_sender_id,
-        friend_name:
+        friend_username:
           row.room_sender_id === userId
-            ? row.room_receiver_username 
+            ? row.room_receiver_username
             : row.room_sender_username,
         last_message: row.content
           ? {

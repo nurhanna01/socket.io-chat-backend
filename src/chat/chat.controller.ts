@@ -30,7 +30,7 @@ export class ChatController {
     try {
       const id = req.user.id;
       this.logger.debug(
-        `processing message for user with id ${id} and friend id ${dto.roomId}`,
+        `processing message for user with id ${id} and room id ${dto.roomId}`,
       );
       const messages = await this.chatService.getMessagesByRoom(dto.roomId);
       return {
